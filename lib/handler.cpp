@@ -46,7 +46,7 @@ void Handler::incrementBlock() {
 }
 
 void Handler::decrementBlock() {
-    blockLevel++;
+    blockLevel--;
 }
 
 void Handler::setState(std::unique_ptr<State> newState) {
@@ -67,11 +67,12 @@ void Handler::printVector() {
     if (!vec.empty()) {
         std::stringstream stream;
         stream << "bulk: ";
-        for (const auto &v : vec) {
-            stream << v;
+        for (auto i = 0; i < vec.size(); i++) {
+            stream << vec[i];
+            if (i < vec.size() - 1) {
+                stream << ", ";
+            }
         }
-        //std::cout << "stream = " << stream.str() << std::endl;
-
         GlobalWorker::logToConsole(handlerId, stream.str());
         GlobalWorker::logToFile(handlerId, stream.str());
     }

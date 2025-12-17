@@ -1,10 +1,15 @@
 #include "worker.h"
 
+#include <ctime>
+#include <iomanip>
 #include <iostream>
 #include <fstream>
 #include <chrono>
 #include <mutex>
+#include <ostream>
+#include <string>
 #include <thread>
+#include <utility>
 
 namespace async {
 
@@ -20,10 +25,17 @@ std::future<void> GlobalWorker::consoleFuture;
 std::future<void> GlobalWorker::file1Future;
 std::future<void> GlobalWorker::file2Future;
 
+std::string GlobalWorker::currentTime{""};
 
 void GlobalWorker::start() {
     if (!running) {
         running = true;
+
+        std::time_t t = std::time(nullptr);
+        std::tm tm = *std::localtime(&t);
+        std::stringstream ss;
+        ss << std::put_time(&tm, "%Y-%m-%d_%H:%M:%S");
+        currentTime = ss.str();
 
         consoleFuture = std::async(std::launch::async, []() {
             while(running) {
@@ -33,7 +45,7 @@ void GlobalWorker::start() {
                 while (!consoleQueue.empty()) {
                     auto msg = std::move(consoleQueue.front());
                     consoleQueue.pop();
-                    std::cout << "[" << msg.handlerId << "] " << msg.data << std::endl;
+                    std::cout << msg.data << std::endl;
                 }
             }
         });
@@ -45,22 +57,30 @@ void GlobalWorker::start() {
 }
 
 void GlobalWorker::fileWorker(int workerId) {
+
+    std::string filename = currentTime + "_" + std::to_string(workerId) + ".log";
+    std::ofstream file(filename, std::ios::app);
+
     while(running) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        
-        // Берем и пишем под одним мьютексом
+        std::queue<Message> messages;
+        bool hasMessage = false;
+
         {
             std::lock_guard<std::mutex> lock(GlobalWorker::fileMutex);
-            if (!fileQueue.empty()) {
-                auto msg = std::move(GlobalWorker::fileQueue.front());
-                fileQueue.pop();
-                
-                std::ofstream file("bulk.log", std::ios::app);
-                if (file.is_open()) {
-                    file << "[thread " << workerId << ": " << msg.handlerId << "] " << msg.data << std::endl;
-                }
-            }
+            messages.swap(fileQueue);
         }
+                               
+        if (!messages.empty() > 0 && file.is_open()) {
+            while (!messages.empty()) {
+                auto msg = std::move(messages.front());
+                messages.pop();
+                file << msg.data << std::endl;
+            }
+            file.flush();
+            
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));     
+        }        
     }
 }
 

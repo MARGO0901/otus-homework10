@@ -32,8 +32,8 @@ void BlockState::ProcessLine(const std::string &line, Handler *handler) {
     } else if (line == "}") {
         handler->decrementBlock();
         if (handler->getBlockLevel() == 0) {
-        handler->setState(std::make_unique<NormalState>());
-        handler->printVector();
+            handler->setState(std::make_unique<NormalState>());
+            handler->printVector();
         }
     } else {
         handler->addToVector(line);

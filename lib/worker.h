@@ -33,5 +33,7 @@ private:
 
     static std::queue<Message> consoleQueue;
     static std::queue<Message> fileQueue;
+
+    static std::string currentTime;
 };
 }
